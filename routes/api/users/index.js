@@ -1,6 +1,11 @@
+const {v4: uuidv4, v4} = require('uuid');
+
 const express = require("express");
 let router = express.Router();
+//Mailer
+const mailSender = require('../../../utility/mailer');
 
+//User modeles
 let userModelClass = require('./users.model.js');
 let userModel = new userModelClass();
 
@@ -63,5 +68,42 @@ router.post('/signin', async(req, res, next)=>{
 router.get('/', (req, res, nex)=>{
     res.status(200).json({msg:"Users index"})
 })
+
+//Password Recovery
+router.post('/forgotpassword', async (req, res)=>{
+    try {
+        const {email} = req.body;
+        //Generar UUID
+        let uniqueId = v4();
+        let insertTheUiid = await userModel.insertUuid(email, uniqueId)
+        console.log(insertTheUiid);
+
+        //Envio del corre
+        mailSender(
+            email,
+            "Recuperacion de contraseña",
+            `<a>http://localhost:3000/api/users/resetpassword/${uniqueId}</a>`
+        )
+        res.status(200).json({"msg":"Se envio un correo"});
+    } catch (erro) {
+        res.status(500).json({"msg":"Error al solicitar cambio de contraseña" +erro});
+    }  
+})
+
+router.post('/resetpassword/:id', async (req, res)=>{
+    try {
+        const {id}=req.params;
+        const {newPassword} = req.body;
+
+        const updatePassword = await userModel.changeThePassword(id, newPassword);
+        console.log(updatePassword);
+        res.status(200).json({msg: "Se cambio la contraseña."})
+
+    } catch (erro) {
+        res.status(500).json({"msg":"Error al cambio de contraseña" +erro});
+    }
+
+})
+
 
 module.exports = router;

@@ -42,8 +42,39 @@ class Users{
         const filter ={"email": email};
         return await this.secColl.findOne(filter);
     }
+    
     async comparePassword(rawPassword, dbPassword){
         return await bcrypt.compare(rawPassword, dbPassword);
+    }
+
+    async insertUuid(email, resetPasswdUuid){
+        let filter = {"email": email};
+        let updateJson ={
+            "$set":{ "resetPasswdUuuid" :resetPasswdUuid}
+        };
+        let result = await this.secColl.updateOne(filter, updateJson);
+        return result;
+    }
+
+    async changeThePassword(resetPasswdUuid, newPassword){
+        let filter = {"resetPasswdUuuid": resetPasswdUuid};
+
+        //Obtener la contraseña vieja
+        try {
+            var lastPassword = await this.secColl.findOne(filter);
+        } catch (error) { console.log("No se pudo obtener la contraseña anterior.") }
+        
+        let updateJson = {
+            "$push":{oldPasswords: lastPassword.password},
+            "$set":{
+                lastPasswordChange: new Date().getTime(),
+                password: await bcrypt.hash(newPassword,10),
+                resetPasswdUuuid: null
+            }
+        }
+
+        let result = await this.secColl.updateOne(filter,updateJson);
+        return result
     }
 }
 
